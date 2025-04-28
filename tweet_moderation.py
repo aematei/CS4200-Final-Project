@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
+import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
+from joblib import dump, load
 
 def main():
     # 1. Load data
     print("Loading dataset...")
     df = pd.read_csv(
-        '/Users/alexmatei/git/CS4200-Final-Project/training.1600000.processed.noemoticon.csv',
+        'training.1600000.processed.noemoticon.csv',
         encoding='latin-1',
         header=None,
         names=['target', 'id', 'date', 'flag', 'user', 'text']
@@ -42,15 +44,22 @@ def main():
     X_test_vec = vectorizer.transform(X_test)
     print(f"Vectorization complete. Vocabulary size: {len(vectorizer.get_feature_names_out())}")
 
-    # 5. Train classifier
-    print("Training Logistic Regression classifier...")
-    clf = LogisticRegression(
-        solver='liblinear',
-        class_weight='balanced',
-        max_iter=200
-    )
-    clf.fit(X_train_vec, y_train)
-    print("Classifier training complete.")
+    # 5. Train or load classifier
+    model_path = 'logistic_regression_model.joblib'
+
+    if os.path.exists(model_path):
+        print("Loading existing model...")
+        clf = load(model_path)
+    else:
+        print("Training new model...")
+        clf = LogisticRegression(
+            solver='liblinear',
+            class_weight='balanced',
+            max_iter=200
+        )
+        clf.fit(X_train_vec, y_train)
+        dump(clf, model_path)
+        print(f"Model saved to '{model_path}'")
 
     # 6. Evaluate
     print("Evaluating the classifier...")

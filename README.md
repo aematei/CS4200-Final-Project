@@ -2,28 +2,31 @@
 
 A minimal end-to-end binary text classification pipeline that flags tweets as malicious/negative or benign/positive using TF-IDF + Logistic Regression.
 
-Dataset taken from https://www.kaggle.com/datasets/kazanova/sentiment140?resource=download
-
 ---
 
 ## Files
 
 - `sentiment140.csv`  
   Raw Sentiment140 dataset (cols: `target,id,date,flag,user,text`)
-- `tweet_moderation.ipynb`  
-  Single-cell Jupyter notebook with the full pipeline
-- `tweet_moderation.py` _(optional)_  
-  Script version of the notebook
+- `tweet_moderation.py`  
+  Script with the full pipeline
+- `requirements.txt`  
+  Pinned Python dependencies
 - `README.md`  
   This file
 
 ---
 
-## Requirements
+## Data Source
 
-- **Python** ≥ 3.8  
-- **pip** (for package installation)
+Download the Sentiment140 dataset from Kaggle and save it as `sentiment140.csv` in your project directory:  
+https://www.kaggle.com/datasets/kazanova/sentiment140?resource=download
 
-Install dependencies:
-```bash
-pip install pandas scikit-learn jupyter
+---
+
+## Setup
+
+1. Create and activate a virtual environment (optional but recommended):
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate

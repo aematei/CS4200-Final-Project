@@ -2,6 +2,8 @@
 
 A minimal end-to-end binary text classification pipeline that flags tweets as malicious/negative or benign/positive using TF-IDF + Logistic Regression.
 
+Dataset taken from https://www.kaggle.com/datasets/kazanova/sentiment140?resource=download
+
 ---
 
 ## Files

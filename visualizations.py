@@ -6,7 +6,6 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_c
 
 def plot_learning_curve(estimator, X, y, title='Learning Curve'):
     """Generate a learning curve with improved clarity and explanations."""
-    # Set style for better readability
     plt.style.use('seaborn-v0_8-whitegrid')
     
     train_sizes, train_scores, test_scores = learning_curve(
@@ -14,7 +13,7 @@ def plot_learning_curve(estimator, X, y, title='Learning Curve'):
         train_sizes=np.linspace(0.1, 1.0, 10),
         scoring='accuracy')
     
-    plt.figure(figsize=(12, 10))  # Larger figure size
+    plt.figure(figsize=(12, 10))
     
     # Calculate statistics
     train_mean = np.mean(train_scores, axis=1)
@@ -33,15 +32,13 @@ def plot_learning_curve(estimator, X, y, title='Learning Curve'):
     plt.fill_between(train_sizes, test_mean - test_std, 
                      test_mean + test_std, alpha=0.1, color='#ff7f0e')
     
-    # Improve readability with titles and labels
     plt.title(title, fontsize=16, fontweight='bold')
     plt.xlabel('Number of Training Examples', fontsize=14)
     plt.ylabel('Accuracy Score', fontsize=14)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
     plt.legend(loc='lower right', fontsize=12)
-    
-    # Add annotations for insights
+
     gap = train_mean[-1] - test_mean[-1]
     gap_text = f"Gap: {gap:.2f}"
     
@@ -51,13 +48,11 @@ def plot_learning_curve(estimator, X, y, title='Learning Curve'):
         insight = "Model may need more complexity"
     else:
         insight = "Model shows good generalization"
-    
-    # Add annotation box with position to avoid overlap
+
     plt.annotate(f"{insight}\n{gap_text}",
                 xy=(0.7, 0.25), xycoords='figure fraction',
                 fontsize=12, bbox=dict(boxstyle="round,pad=0.5", alpha=0.1))
-    
-    # Add explanation of the plot at the bottom
+
     explanation = (
         "Learning Curve Interpretation:\n"
         "• Converging lines = Model has enough data\n"
@@ -71,7 +66,7 @@ def plot_learning_curve(estimator, X, y, title='Learning Curve'):
                ha='center')
     
     plt.grid(True)
-    plt.tight_layout(rect=[0, 0.07, 1, 0.95])  # Make room for explanation
+    plt.tight_layout(rect=[0, 0.07, 1, 0.95])  
     plt.show()
 
 def plot_confusion_matrix(y_true, y_pred, class_names=['Negative', 'Positive']):
@@ -79,34 +74,30 @@ def plot_confusion_matrix(y_true, y_pred, class_names=['Negative', 'Positive']):
     plt.style.use('seaborn-v0_8-whitegrid')
     
     cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(12, 10))  # Increase figure size
+    plt.figure(figsize=(12, 10)) 
     
     # Calculate metrics for annotation
     total = np.sum(cm)
     accuracy = np.trace(cm) / total
     misclassification = 1 - accuracy
-    
-    # Create more informative heatmap
+
     ax = sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                     xticklabels=class_names, yticklabels=class_names)
     
     plt.title('Confusion Matrix: Tweet Classification Results', fontsize=16, fontweight='bold')
     plt.ylabel('True Sentiment', fontsize=14)
     plt.xlabel('Predicted Sentiment', fontsize=14)
-    
-    # Add metrics at the bottom with more space
+
     plt.figtext(0.5, 0.01, f'Accuracy: {accuracy:.2%} | Misclassification: {misclassification:.2%}', 
                ha='center', fontsize=12, bbox=dict(boxstyle="round,pad=0.5", alpha=0.1))
-    
-    # Reposition explanations to avoid overlap
+
     cell_labels = [
         f"True Negatives\n({cm[0,0]})\nCorrectly identified\nnegative tweets",
         f"False Positives\n({cm[0,1]})\nNegative tweets\nmisclassified as positive",
         f"False Negatives\n({cm[1,0]})\nPositive tweets\nmisclassified as negative",
         f"True Positives\n({cm[1,1]})\nCorrectly identified\npositive tweets"
     ]
-    
-    # Position text boxes with more spacing
+
     plt.annotate(cell_labels[0], xy=(0.18, 0.82), xycoords='figure fraction',
                 fontsize=11, ha='center', bbox=dict(boxstyle="round,pad=0.5", alpha=0.1))
     
@@ -119,7 +110,7 @@ def plot_confusion_matrix(y_true, y_pred, class_names=['Negative', 'Positive']):
     plt.annotate(cell_labels[3], xy=(0.82, 0.18), xycoords='figure fraction',
                 fontsize=11, ha='center', bbox=dict(boxstyle="round,pad=0.5", alpha=0.1))
     
-    plt.tight_layout(rect=[0, 0.07, 1, 0.93])  # Adjust layout to prevent overlap
+    plt.tight_layout(rect=[0, 0.07, 1, 0.93])
     plt.show()
 
 def plot_roc_curve(y_test, y_pred_proba):
@@ -129,24 +120,22 @@ def plot_roc_curve(y_test, y_pred_proba):
     fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
     roc_auc = auc(fpr, tpr)
     
-    plt.figure(figsize=(12, 10))  # Larger figure
+    plt.figure(figsize=(12, 10)) 
     
     # Main ROC curve
     plt.plot(fpr, tpr, color='darkorange', lw=3, 
              label=f'ROC curve (AUC = {roc_auc:.2f})')
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--',
              label='Random classifier (AUC = 0.5)')
-    
-    # Highlight threshold points with better spacing
+
     threshold_points = [0.3, 0.5, 0.7]
     annotations = []
     
     for i, threshold in enumerate(threshold_points):
         idx = (np.abs(thresholds - threshold)).argmin()
-        if idx < len(fpr):  # Ensure index is within bounds
+        if idx < len(fpr):
             plt.plot(fpr[idx], tpr[idx], 'ro', markersize=8)
-            
-            # Alternate annotation positions to avoid overlap
+
             xytext_offset = [(30, -20), (20, 30), (-30, -40)][i % 3]
             
             annot = plt.annotate(f'threshold={threshold:.1f}', 
@@ -163,8 +152,7 @@ def plot_roc_curve(y_test, y_pred_proba):
     plt.ylabel('True Positive Rate (Sensitivity)', fontsize=14)
     plt.title('Receiver Operating Characteristic (ROC) Curve', fontsize=16, fontweight='bold')
     plt.legend(loc="lower right", fontsize=12)
-    
-    # Add explanatory text in a separate box positioned to avoid overlap
+
     explanation = (
         "ROC Curve Interpretation:\n"
         "• Closer to top-left corner = better performance\n"
@@ -172,14 +160,13 @@ def plot_roc_curve(y_test, y_pred_proba):
         "• AUC of 0.5 = random guessing (diagonal line)\n"
         "• Higher threshold = fewer false positives but more false negatives"
     )
-    
-    # Position the explanation text box in a corner with minimal content
+
     plt.figtext(0.5, 0.01, explanation, fontsize=12, 
                bbox=dict(boxstyle="round,pad=0.5", alpha=0.1),
                ha='center')
     
     plt.grid(True)
-    plt.tight_layout(rect=[0, 0.07, 1, 0.95])  # Make room for the explanation
+    plt.tight_layout(rect=[0, 0.07, 1, 0.95]) 
     plt.show()
 
 def plot_precision_recall_curve(y_test, y_pred_proba):
@@ -187,12 +174,11 @@ def plot_precision_recall_curve(y_test, y_pred_proba):
     precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba)
     average_precision = average_precision_score(y_test, y_pred_proba)
     
-    plt.figure(figsize=(12, 10))  # Larger figure
+    plt.figure(figsize=(12, 10)) 
     plt.plot(recall, precision, color='blue', lw=3,
              label=f'Precision-Recall curve (AP = {average_precision:.2f})')
-    
-    # Highlight threshold points with better spacing
-    thresholds = np.append(thresholds, 0)  # Add a 0 to match precision/recall arrays
+
+    thresholds = np.append(thresholds, 0)
     highlight_thresholds = [0.3, 0.5, 0.7]
     annotation_offsets = [(20, -20), (30, 30), (-30, -40)]
     
@@ -200,8 +186,7 @@ def plot_precision_recall_curve(y_test, y_pred_proba):
         if threshold < len(thresholds):
             idx = (np.abs(thresholds - threshold)).argmin()
             plt.plot(recall[idx], precision[idx], 'ro', markersize=8)
-            
-            # Use different offsets for each point to avoid overlap
+
             offset = annotation_offsets[i % len(annotation_offsets)]
             
             plt.annotate(f'threshold={threshold:.1f}', 
@@ -218,8 +203,7 @@ def plot_precision_recall_curve(y_test, y_pred_proba):
     # Add a no-skill baseline
     plt.plot([0, 1], [sum(y_test)/len(y_test)] * 2, linestyle='--', color='grey', 
              label='No skill classifier (AP = {:.2f})'.format(sum(y_test)/len(y_test)))
-    
-    # Add explanation box at the bottom with better positioning
+
     explanation = (
         "Precision-Recall Interpretation:\n"
         "• Precision: How many selected items are relevant\n"
@@ -235,17 +219,15 @@ def plot_precision_recall_curve(y_test, y_pred_proba):
     
     plt.legend(loc="best", fontsize=12)
     plt.grid(True)
-    plt.tight_layout(rect=[0, 0.07, 1, 0.95])  # Make room for explanation
+    plt.tight_layout(rect=[0, 0.07, 1, 0.95]) 
     plt.show()
 
 def plot_all_metrics(clf, X_train, X_test, y_train, y_test):
     """Generate all performance visualizations on a clean grid."""
     plt.style.use('seaborn-v0_8-whitegrid')
-    
-    # Create a 2x2 grid with enough spacing
+
     fig = plt.figure(figsize=(20, 16))
-    
-    # Define specific grid positions with good spacing
+
     grid_positions = [
         (0, 0, 1, 1),  # row, col, row_span, col_span for Learning Curve
         (0, 1, 1, 1),  # Confusion Matrix
@@ -282,21 +264,17 @@ def plot_all_metrics(clf, X_train, X_test, y_train, y_test):
     print("\n4. Precision-Recall Curve - Shows precision vs recall tradeoff")
     ax4 = plt.subplot2grid((2, 2), (1, 1))
     _plot_pr_curve_on_ax(y_test, y_pred_proba, ax=ax4)
-    
-    # Adjust layout with extra padding
+
     plt.tight_layout(pad=5.0, h_pad=6.0, w_pad=6.0)
-    
-    # Add a title for the entire figure
+
     fig.suptitle('Tweet Classification Model Performance Metrics', 
                  fontsize=20, fontweight='bold', y=0.98)
-    
-    # Add whitespace at the top for the title
+
     plt.subplots_adjust(top=0.92)
     
     plt.show()
     print("\nAll visualizations generated successfully!")
 
-# Create the helper functions to render on specific axes
 def _plot_learning_curve_on_ax(estimator, X, y, ax=None):
     """Plot learning curve on a specific axis."""
     from sklearn.model_selection import learning_curve
@@ -331,8 +309,7 @@ def _plot_learning_curve_on_ax(estimator, X, y, ax=None):
     ax.set_xlabel('Training Examples', fontsize=12)
     ax.set_ylabel('Accuracy Score', fontsize=12)
     ax.legend(loc='lower right', fontsize=10)
-    
-    # Add annotation for gap
+
     gap = train_mean[-1] - test_mean[-1]
     if gap > 0.05:
         insight = "Model shows overfitting"
@@ -340,8 +317,7 @@ def _plot_learning_curve_on_ax(estimator, X, y, ax=None):
         insight = "Model may need more complexity"
     else:
         insight = "Good generalization"
-        
-    # Add annotation in corner to avoid overlap
+
     ax.text(0.05, 0.05, f"{insight}\nGap: {gap:.2f}", 
             transform=ax.transAxes, fontsize=10,
             bbox=dict(boxstyle="round,pad=0.3", alpha=0.1))
@@ -349,7 +325,6 @@ def _plot_learning_curve_on_ax(estimator, X, y, ax=None):
     ax.grid(True)
     return ax
 
-# Implement similar functions for other plots
 def _plot_confusion_matrix_on_ax(y_true, y_pred, ax=None, class_names=['Negative', 'Positive']):
     """Plot confusion matrix on a specific axis."""
     from sklearn.metrics import confusion_matrix
@@ -359,8 +334,7 @@ def _plot_confusion_matrix_on_ax(y_true, y_pred, ax=None, class_names=['Negative
         fig, ax = plt.subplots(figsize=(10, 6))
         
     cm = confusion_matrix(y_true, y_pred)
-    
-    # Create heatmap with good text contrast
+
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                xticklabels=class_names, yticklabels=class_names, ax=ax,
                annot_kws={"size": 14, "weight": "bold"})
@@ -394,8 +368,7 @@ def _plot_roc_curve_on_ax(y_test, y_pred_proba, ax=None):
     ax.set_ylabel('True Positive Rate', fontsize=12)
     ax.set_title('ROC Curve', fontsize=14, fontweight='bold')
     ax.legend(loc="lower right", fontsize=10)
-    
-    # Add simple explanation
+
     ax.text(0.7, 0.1, "Higher AUC = Better model\nAUC=1: Perfect model\nAUC=0.5: Random guessing", 
             fontsize=8, bbox=dict(boxstyle="round,pad=0.3", alpha=0.1))
     

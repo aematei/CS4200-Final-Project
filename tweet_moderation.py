@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import traceback
 import pandas as pd
@@ -13,11 +12,9 @@ from tqdm import tqdm
 from tqdm.auto import tqdm
 tqdm.pandas()
 
-# Much stronger warning suppression
 import warnings
-warnings.filterwarnings("ignore")  # This will suppress ALL warnings
+warnings.filterwarnings("ignore")  
 
-# To be more specific about which warnings to suppress:
 from sklearn.exceptions import ConvergenceWarning
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -52,7 +49,7 @@ def predict_sentiment(text, vectorizer, model):
     dict
         Contains prediction, probability, and human-readable label
     """
-    # Preprocess input text
+
     processed_text = preprocess_text(text)
     
     # Check if any words are in the vocabulary
@@ -68,11 +65,10 @@ def predict_sentiment(text, vectorizer, model):
     
     # Calculate sentiment score
     confidence = float(probabilities[int(prediction)])
-    sentiment_score = (confidence - 0.5) * 2  # Convert to -1 to 1 scale
+    sentiment_score = (confidence - 0.5) * 2  
     if prediction == 0:
-        sentiment_score = -sentiment_score  # Make negative for negative predictions
-    
-    # Create human-readable result
+        sentiment_score = -sentiment_score  
+
     result = {
         'prediction': int(prediction),
         'probability': float(probabilities[int(prediction)]),
@@ -81,8 +77,7 @@ def predict_sentiment(text, vectorizer, model):
         'sentiment_score': sentiment_score,
         'unknown_words_ratio': 1 - (len(known_words) / max(1, len(text_tokens)))
     }
-    
-    # Add warning if many words are unknown
+
     if result['unknown_words_ratio'] > 0.5 and len(text_tokens) > 1:
         result['warning'] = f"Warning: {result['unknown_words_ratio']:.0%} of words not recognized by the model."
     
@@ -175,16 +170,14 @@ def retrain_with_feedback(model, vectorizer, feedback_data):
         # Create a new model with the same parameters 
         new_model = LogisticRegression(
             C=model.C if hasattr(model, 'C') else 1.0,
-            solver='liblinear',  # liblinear is good for smaller datasets
+            solver='liblinear', 
             random_state=42,
             max_iter=1000
         )
         
         # Train on the feedback data
         new_model.fit(X_vectors, y_feedback)
-        
-        # Manually update coefficients to incorporate the feedback
-        # This is a simple approach - we give priority to feedback for specific words
+
         feature_names = vectorizer.get_feature_names_out()
         
         # For each word in the feedback, adjust the original model's coefficient
@@ -195,10 +188,10 @@ def retrain_with_feedback(model, vectorizer, feedback_data):
                     idx = list(feature_names).index(word)
                     # If sentiment is positive (1) but coefficient is negative, make it positive
                     if sentiment == 1 and model.coef_[0][idx] < 0:
-                        model.coef_[0][idx] = abs(model.coef_[0][idx]) * 1.5  # Make it positive and stronger
+                        model.coef_[0][idx] = abs(model.coef_[0][idx]) * 1.5
                     # If sentiment is negative (0) but coefficient is positive, make it negative
                     elif sentiment == 0 and model.coef_[0][idx] > 0:
-                        model.coef_[0][idx] = -abs(model.coef_[0][idx]) * 1.5  # Make it negative and stronger
+                        model.coef_[0][idx] = -abs(model.coef_[0][idx]) * 1.5 
         
         print("Model successfully updated with feedback!")
         # Save the updated model
@@ -216,18 +209,18 @@ def create_fresh_model(vectorizer, X_train, y_train):
     
     # Create the base model
     clf = LogisticRegression(
-        C=1.0,               # L2 regularization strength
-        solver='liblinear',  # Good for smaller datasets
+        C=1.0,              
+        solver='liblinear', 
         random_state=42,
-        max_iter=1000,       # Increase iterations to ensure convergence
-        class_weight='balanced'  # Handle class imbalance
+        max_iter=1000,      
+        class_weight='balanced'  
     )
     
     # Vectorize data if needed
     if isinstance(X_train, pd.Series) or isinstance(X_train, list):
         X_train_vec = vectorizer.fit_transform(X_train)
     else:
-        X_train_vec = X_train  # Assume it's already vectorized
+        X_train_vec = X_train 
     
     # Train the model
     clf.fit(X_train_vec, y_train)
@@ -278,9 +271,8 @@ def interactive_demo(vectorizer, model, collect_feedback=True):
             continue
             
         result = predict_sentiment(user_input, vectorizer, model)
-        
-        # Display result with color (works in most terminals)
-        color = '\033[92m' if result['prediction'] == 1 else '\033[91m'  # green or red
+
+        color = '\033[92m' if result['prediction'] == 1 else '\033[91m' 
         reset = '\033[0m'
         
         print(f"\nAnalysis Result:")
@@ -290,23 +282,21 @@ def interactive_demo(vectorizer, model, collect_feedback=True):
         # Add sentiment score
         sentiment_score = result['sentiment_score']
         print(f"  Sentiment Score: {sentiment_score:.2f} [-1 = Very Negative, +1 = Very Positive]")
-        
-        # Enhanced visual with colored indicators
+
         bar_length = 30
         position = int((sentiment_score + 1) / 2 * bar_length)
-        
-        # Add color to the visualization (works in most terminals)
-        neg_color = '\033[91m'  # red
-        pos_color = '\033[92m'  # green
-        neut_color = '\033[93m' # yellow
+
+        neg_color = '\033[91m'  
+        pos_color = '\033[92m'  
+        neut_color = '\033[93m' 
         reset = '\033[0m'
         
         # Create colored sections
-        if position <= bar_length // 3:  # Negative zone
+        if position <= bar_length // 3: 
             bar = neg_color + '|' + '█' * position + '•' + ' ' * (bar_length - position - 1) + '|' + reset
-        elif position >= 2 * bar_length // 3:  # Positive zone
+        elif position >= 2 * bar_length // 3:  
             bar = pos_color + '|' + ' ' * position + '•' + ' ' * (bar_length - position - 1) + '|' + reset
-        else:  # Neutral zone
+        else:  
             bar = neut_color + '|' + ' ' * position + '•' + ' ' * (bar_length - position - 1) + '|' + reset
         
         # Add zone indicators
@@ -329,10 +319,7 @@ def interactive_demo(vectorizer, model, collect_feedback=True):
         # Get the coefficients from the model
         if hasattr(model, 'coef_'):
             coef = model.coef_[0]
-            # Get non-zero features in this text
             nonzero = text_vector.nonzero()[1]
-            
-            # Create a list of (word, coefficient) tuples for words in the input
             word_importance = [(feature_names[i], coef[i]) for i in nonzero]
             
             # Sort by absolute value of coefficient (importance)
@@ -368,19 +355,17 @@ def interactive_demo(vectorizer, model, collect_feedback=True):
                 if correct_label.startswith('p'):
                     correct_sentiment = 1  # Positive
                     feedback_data.append((user_input, correct_sentiment))
-                    # Also add variations with the problematic words for better learning
+
                     for word, importance in word_importance:
                         if word in POSITIVE_WORDS and importance < 0:
-                            # Add extra examples for positive words the model thinks are negative
+
                             feedback_data.append((f"I really {word} this.", correct_sentiment))
                     print("Thank you for your feedback! This will help improve the model.")
                 elif correct_label.startswith('n'):
-                    correct_sentiment = 0  # Negative
+                    correct_sentiment = 0  
                     feedback_data.append((user_input, correct_sentiment))
-                    # Also add variations with the problematic words for better learning
                     for word, importance in word_importance:
                         if word in NEGATIVE_WORDS and importance > 0:
-                            # Add extra examples for negative words the model thinks are positive
                             feedback_data.append((f"I really {word} this.", correct_sentiment))
                     print("Thank you for your feedback! This will help improve the model.")
         
@@ -394,13 +379,13 @@ def interactive_demo(vectorizer, model, collect_feedback=True):
 def create_vectorizer():
     """Create and return a configured TF-IDF vectorizer"""
     return TfidfVectorizer(
-        max_features=15_000,  # Increase feature count
-        ngram_range=(1, 3),   # Include trigrams for better context
+        max_features=15_000, 
+        ngram_range=(1, 3),   
         stop_words='english',
-        min_df=5,             # Ignore very rare terms
-        max_df=0.9,           # Ignore very common terms
+        min_df=5,            
+        max_df=0.9,         
         use_idf=True,
-        sublinear_tf=True     # Apply sublinear tf scaling (logarithmic)
+        sublinear_tf=True  
     )
 
 def tune_hyperparameters(model, param_grid, X_train, y_train):
@@ -411,9 +396,9 @@ def tune_hyperparameters(model, param_grid, X_train, y_train):
     grid_search = GridSearchCV(
         estimator=model,
         param_grid=param_grid,
-        cv=3,  # Number of cross-validation folds
+        cv=3,  
         scoring='accuracy',
-        n_jobs=-1,  # Use all available cores
+        n_jobs=-1,  
         verbose=1
     )
     
@@ -434,7 +419,7 @@ def train_new_model(vectorizer, X_train, X_test, y_train, model_path):
     param_grid = {
         'C': [0.1, 1.0, 10.0],
         'class_weight': ['balanced', None],
-        'max_iter': [500]  # Removed multi_class parameter to avoid warnings
+        'max_iter': [500]  
     }
     
     base_model = LogisticRegression(solver='liblinear', random_state=42)
@@ -446,7 +431,7 @@ def train_new_model(vectorizer, X_train, X_test, y_train, model_path):
     dump(clf, model_path)
     print(f"Model saved to '{model_path}'")
     
-    # Save the vectorizer too
+    # Save the vectorizer 
     vectorizer_path = 'tfidf_vectorizer.joblib'
     dump(vectorizer, vectorizer_path)
     print(f"Vectorizer saved to '{vectorizer_path}'")
@@ -489,19 +474,17 @@ def fix_model_lexicon(model, vectorizer):
     for word in POSITIVE_WORDS:
         if word in feature_names:
             idx = list(feature_names).index(word)
-            # If coefficient is negative for a known positive word, correct it
             if model.coef_[0][idx] < 0:
                 print(f"Fixing sentiment for positive word: '{word}'")
-                model.coef_[0][idx] = abs(model.coef_[0][idx])  # Make it positive
+                model.coef_[0][idx] = abs(model.coef_[0][idx])
     
     # Correct negative words
     for word in NEGATIVE_WORDS:
         if word in feature_names:
             idx = list(feature_names).index(word)
-            # If coefficient is positive for a known negative word, correct it
             if model.coef_[0][idx] > 0:
                 print(f"Fixing sentiment for negative word: '{word}'")
-                model.coef_[0][idx] = -abs(model.coef_[0][idx])  # Make it negative
+                model.coef_[0][idx] = -abs(model.coef_[0][idx])
     
     return model
 
@@ -514,15 +497,13 @@ def main(sample_size=None):
         header=None,
         names=['target', 'id', 'date', 'flag', 'user', 'text']
     )
-    
-    # Take a sample if specified (helps with memory issues and faster processing)
+
     if sample_size and sample_size < len(df):
         print(f"Taking a random sample of {sample_size} tweets...")
         df = df.sample(sample_size, random_state=42)
     
     print(f"Dataset loaded with {len(df)} rows and the following columns: {list(df.columns)}")
 
-    # Add preprocessing
     print("Preprocessing text data...")
     df['text'] = df['text'].progress_apply(preprocess_text)
 
@@ -541,7 +522,7 @@ def main(sample_size=None):
     )
     print(f"Training set size: {len(X_train)}, Testing set size: {len(X_test)}")
 
-    # 4. & 5. Vectorization and model training (new structure)
+    # 4. & 5. Vectorization and model training
     model_path = 'logistic_regression_model.joblib'
     vectorizer_path = 'tfidf_vectorizer.joblib'
 
@@ -558,7 +539,7 @@ def main(sample_size=None):
             X_test_vec = vectorizer.transform(X_test)
             print(f"Using existing vectorizer with vocabulary size: {len(vectorizer.get_feature_names_out())}")
             
-            # Add cross-validation
+            # cross-validation
             print("Performing cross-validation...")
             from sklearn.model_selection import cross_val_score
             cv_scores = cross_val_score(clf, X_train_vec, y_train, cv=5, scoring='accuracy')
@@ -570,16 +551,15 @@ def main(sample_size=None):
             vectorizer = create_vectorizer()
             X_train_vec, X_test_vec, clf = train_new_model(vectorizer, X_train, X_test, y_train, model_path)
     else:
-        # Train new model since files don't exist
         print("Training new model with fresh vectorizer...")
         vectorizer = create_vectorizer()
         X_train_vec, X_test_vec, clf = train_new_model(vectorizer, X_train, X_test, y_train, model_path)
-    # Add cross-validation
+    # cross-validation
     print("Performing cross-validation...")
     cv_scores = perform_cross_validation(clf, X_train_vec, y_train)
     print(f"Cross-validation scores: {cv_scores.mean():.3f} (+/- {cv_scores.std() * 2:.3f})")
 
-    # 5. Enhanced evaluation
+    # 5. evaluation
     print("Evaluating the classifier...")
     y_pred = clf.predict(X_test_vec)
     y_pred_proba = clf.predict_proba(X_test_vec)[:, 1]
@@ -588,7 +568,7 @@ def main(sample_size=None):
     print(f"Accuracy: {accuracy}")
     print("\nClassification Report:\n", classification_report(y_test, y_pred))
 
-    # Add visualizations
+    # visualizations
     print("Generating user-friendly visualizations...")
     def plot_all_metrics(y_test, y_pred, y_pred_proba, clf, X_train_vec, y_train):
         """
@@ -609,7 +589,7 @@ def main(sample_size=None):
         y_train : array-like
             True labels for the training set
         """
-        # Create a figure with subplots
+
         plt.figure(figsize=(16, 12))
         
         # Plot 1: Confusion Matrix
@@ -682,8 +662,7 @@ if __name__ == '__main__':
         sample_size = None
         
         clf, vectorizer = main(sample_size)
-        
-        # Ask if user wants to try the interactive demo
+
         try_demo = input("\nWould you like to try the interactive tweet analyzer? (y/n): ")
         if try_demo.lower().startswith('y'):
             interactive_demo(vectorizer, clf)

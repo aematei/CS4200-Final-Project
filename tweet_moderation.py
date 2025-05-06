@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay, roc_curve, roc_auc_score
 from joblib import dump, load
 from tqdm import tqdm
 from tqdm.auto import tqdm
+import seaborn as sns
 tqdm.pandas()
 
 import warnings
@@ -20,6 +21,8 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 warnings.filterwarnings("ignore", message=".*multi_class.*")
+
+import matplotlib.pyplot as plt
 
 NEGATIVE_WORDS = {
     'hate', 'stupid', 'sad', 'slut', 'poop', 'slander', 'terrible', 'awful', 
@@ -488,6 +491,60 @@ def fix_model_lexicon(model, vectorizer):
     
     return model
 
+def plot_all_metrics(y_test, y_pred, y_pred_proba, clf, X_train_vec, y_train, vectorizer):
+    """Plot various evaluation metrics and visualizations"""
+    plt.style.use('seaborn-v0_8-whitegrid')  # Updated style name
+    
+    # Create figure with subplots
+    fig = plt.figure(figsize=(16, 12))
+    
+    # Plot 1: Confusion Matrix
+    plt.subplot(2, 2, 1)
+    cm = confusion_matrix(y_test, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Negative', 'Positive'])
+    disp.plot(cmap='Blues', ax=plt.gca())
+    plt.title('Confusion Matrix', pad=20, fontsize=14)
+    
+    # Plot 2: ROC Curve
+    plt.subplot(2, 2, 2)
+    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+    auc = roc_auc_score(y_test, y_pred_proba)
+    plt.plot(fpr, tpr, label=f'AUC = {auc:.3f}')
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve', pad=20, fontsize=14)
+    plt.legend(loc='lower right')
+    
+    # Plot 3: Feature Importance
+    plt.subplot(2, 1, 2)
+    if hasattr(clf, 'coef_'):
+        feature_names = vectorizer.get_feature_names_out()
+        coefs = clf.coef_[0]
+        
+        top_positive_idx = coefs.argsort()[-15:]
+        top_negative_idx = coefs.argsort()[:15]
+        
+        top_idx = np.concatenate([top_negative_idx, top_positive_idx])
+        top_features = [feature_names[i] for i in top_idx]
+        top_coefs = [coefs[i] for i in top_idx]
+        
+        colors = ['red' if c < 0 else 'green' for c in top_coefs]
+        plt.barh(top_features, top_coefs, color=colors)
+        plt.title('Top Feature Importance', pad=20, fontsize=14)
+        plt.xlabel('Coefficient Value')
+    
+    plt.tight_layout(pad=3.0)  # Add padding between subplots
+    
+    # Save the figure
+    plt.savefig('model_evaluation.png', bbox_inches='tight', dpi=300)
+    
+    # Show the plot
+    plt.show()
+    
+    # Close the figure to free memory
+    plt.close(fig)
+
 def main(sample_size=None):
     # 1. Load data
     print("Loading dataset...")
@@ -570,75 +627,10 @@ def main(sample_size=None):
 
     # visualizations
     print("Generating user-friendly visualizations...")
-    def plot_all_metrics(y_test, y_pred, y_pred_proba, clf, X_train_vec, y_train):
-        """
-        Plot various evaluation metrics and visualizations for the model
-        
-        Parameters:
-        -----------
-        y_test : array-like
-            True labels for the test set
-        y_pred : array-like
-            Predicted labels for the test set
-        y_pred_proba : array-like
-            Predicted probabilities for the test set
-        clf : classifier
-            Trained classification model
-        X_train_vec : sparse matrix
-            Vectorized training data
-        y_train : array-like
-            True labels for the training set
-        """
-
-        plt.figure(figsize=(16, 12))
-        
-        # Plot 1: Confusion Matrix
-        from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-        plt.subplot(2, 2, 1)
-        cm = confusion_matrix(y_test, y_pred)
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Negative', 'Positive'])
-        disp.plot(cmap='Blues', ax=plt.gca())
-        plt.title('Confusion Matrix')
-        
-        # Plot 2: ROC Curve
-        from sklearn.metrics import roc_curve, roc_auc_score
-        plt.subplot(2, 2, 2)
-        fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
-        auc = roc_auc_score(y_test, y_pred_proba)
-        plt.plot(fpr, tpr, label=f'AUC = {auc:.3f}')
-        plt.plot([0, 1], [0, 1], 'k--')
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('ROC Curve')
-        plt.legend(loc='lower right')
-        
-        # Plot 3: Feature Importance (top 15 positive and negative)
-        plt.subplot(2, 1, 2)
-        if hasattr(clf, 'coef_'):
-            feature_names = vectorizer.get_feature_names_out()
-            coefs = clf.coef_[0]
-            
-            # Get top features
-            top_positive_idx = coefs.argsort()[-15:]
-            top_negative_idx = coefs.argsort()[:15]
-            
-            # Combine indices and get corresponding feature names and coefficients
-            top_idx = np.concatenate([top_negative_idx, top_positive_idx])
-            top_features = [feature_names[i] for i in top_idx]
-            top_coefs = [coefs[i] for i in top_idx]
-            
-            # Plot
-            colors = ['red' if c < 0 else 'green' for c in top_coefs]
-            plt.barh(top_features, top_coefs, color=colors)
-            plt.title('Top Feature Importance')
-            plt.xlabel('Coefficient Value')
-            plt.tight_layout()
-        
-        plt.savefig('model_evaluation.png')
-        print("Visualizations saved as 'model_evaluation.png'")
-        plt.close()
+    plot_all_metrics(y_test, y_pred, y_pred_proba, clf, X_train_vec, y_train, vectorizer)
     
-    plot_all_metrics(y_test, y_pred, y_pred_proba, clf, X_train_vec, y_train)
+    # Add a small pause to ensure plots are displayed
+    plt.pause(1)
 
     # Save vectorizer
     dump(vectorizer, vectorizer_path)
@@ -673,4 +665,3 @@ if __name__ == '__main__':
         print(f"\nError during execution: {e}")
         traceback.print_exc()
         print("\nTry removing the model and vectorizer files and running again.")
-

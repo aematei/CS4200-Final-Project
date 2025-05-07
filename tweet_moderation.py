@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Tuple, Optional
 from model_utils import train_in_batches
 from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
+from visualizations import plot_all_metrics
 tqdm.pandas()
 
 import warnings
@@ -390,60 +391,6 @@ def fix_model_lexicon(model: Any, vectorizer: Any) -> Any:
     
     return model
 
-def plot_all_metrics(y_test, y_pred, y_pred_proba, clf, X_train_vec, y_train, vectorizer):
-    """Plot various evaluation metrics and visualizations"""
-    plt.style.use('seaborn-v0_8-whitegrid')  # Updated style name
-    
-    # Create figure with subplots
-    fig = plt.figure(figsize=(16, 12))
-    
-    # Plot 1: Confusion Matrix
-    plt.subplot(2, 2, 1)
-    cm = confusion_matrix(y_test, y_pred)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Negative', 'Positive'])
-    disp.plot(cmap='Blues', ax=plt.gca())
-    plt.title('Confusion Matrix', pad=20, fontsize=14)
-    
-    # Plot 2: ROC Curve
-    plt.subplot(2, 2, 2)
-    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
-    auc = roc_auc_score(y_test, y_pred_proba)
-    plt.plot(fpr, tpr, label=f'AUC = {auc:.3f}')
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve', pad=20, fontsize=14)
-    plt.legend(loc='lower right')
-    
-    # Plot 3: Feature Importance
-    plt.subplot(2, 1, 2)
-    if hasattr(clf, 'coef_'):
-        feature_names = vectorizer.get_feature_names_out()
-        coefs = clf.coef_[0]
-        
-        top_positive_idx = coefs.argsort()[-15:]
-        top_negative_idx = coefs.argsort()[:15]
-        
-        top_idx = np.concatenate([top_negative_idx, top_positive_idx])
-        top_features = [feature_names[i] for i in top_idx]
-        top_coefs = [coefs[i] for i in top_idx]
-        
-        colors = ['red' if c < 0 else 'green' for c in top_coefs]
-        plt.barh(top_features, top_coefs, color=colors)
-        plt.title('Top Feature Importance', pad=20, fontsize=14)
-        plt.xlabel('Coefficient Value')
-    
-    plt.tight_layout(pad=3.0)  # Add padding between subplots
-    
-    # Save the figure
-    plt.savefig('model_evaluation.png', bbox_inches='tight', dpi=300)
-    
-    # Show the plot
-    plt.show()
-    
-    # Close the figure to free memory
-    plt.close(fig)
-
 def main(sample_size=None):
     # 1. Load data
     print("Loading dataset...")
@@ -523,7 +470,14 @@ def main(sample_size=None):
 
     # visualizations
     print("Generating user-friendly visualizations...")
-    plot_all_metrics(y_test, y_pred, y_pred_proba, clf, X_train_vec, y_train, vectorizer)
+    plot_all_metrics(
+        clf=clf,
+        X_train=X_train_vec,
+        X_test=X_test_vec,
+        y_train=y_train,
+        y_test=y_test,
+        vectorizer=vectorizer
+    )
     
     # Add a small pause to ensure plots are displayed
     plt.pause(1)

@@ -45,5 +45,15 @@ class TestTweetModeration(unittest.TestCase):
         self.assertEqual(result['label'], 'Negative/Malicious')
         self.assertGreater(result['probability'], 0.5)
 
+    def test_predict_sentiment_empty(self):
+        """Test prediction for empty input"""
+        result = predict_sentiment("", self.vectorizer, self.model)
+        self.assertIn(result['prediction'], [0, 1])
+
+    def test_predict_sentiment_emojis(self):
+        """Test prediction for input with only emojis"""
+        result = predict_sentiment("😀😢", self.vectorizer, self.model)
+        self.assertIn(result['prediction'], [0, 1])
+
 if __name__ == '__main__':
     unittest.main()

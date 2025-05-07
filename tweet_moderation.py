@@ -11,6 +11,10 @@ from joblib import dump, load
 from tqdm import tqdm
 from tqdm.auto import tqdm
 import seaborn as sns
+from typing import Any, Dict, List, Tuple, Optional
+from model_utils import train_in_batches
+from sklearn.linear_model import SGDClassifier
+from sklearn.pipeline import Pipeline
 tqdm.pandas()
 
 import warnings
@@ -24,6 +28,9 @@ warnings.filterwarnings("ignore", message=".*multi_class.*")
 
 import matplotlib.pyplot as plt
 
+MODEL_PATH = "logistic_regression_model.joblib"
+VECTORIZER_PATH = "vectorizer.joblib"
+
 NEGATIVE_WORDS = {
     'hate', 'stupid', 'sad', 'slut', 'poop', 'slander', 'terrible', 'awful', 
     'horrible', 'bad', 'worst', 'ugly', 'negative', 'annoying', 'angry', 'furious'
@@ -34,7 +41,27 @@ POSITIVE_WORDS = {
     'love', 'like', 'awesome', 'best', 'beautiful', 'positive', 'joy', 'delightful'
 }
 
-def predict_sentiment(text, vectorizer, model):
+DEFAULT_MAX_FEATURES = 15000
+
+def create_vectorizer(max_features: int = DEFAULT_MAX_FEATURES) -> TfidfVectorizer:
+    return TfidfVectorizer(
+        lowercase=True,
+        stop_words='english',
+        ngram_range=(1, 2),
+        max_features=max_features
+    )
+
+def create_pipeline():
+    return Pipeline([
+        ('vectorizer', TfidfVectorizer(lowercase=True, stop_words='english', ngram_range=(1, 2), max_features=DEFAULT_MAX_FEATURES)),
+        ('classifier', LogisticRegression(max_iter=300, n_jobs=-1))
+    ])
+
+def predict_sentiment(
+    text: str, 
+    vectorizer: Any, 
+    model: Any
+) -> Dict[str, Any]:
     """
     Predict the sentiment of a given text input.
     
@@ -86,7 +113,7 @@ def predict_sentiment(text, vectorizer, model):
     
     return result
 
-def preprocess_text(text):
+def preprocess_text(text: Any) -> str:
     """
     Preprocess text with more advanced techniques for better feature extraction.
     """
@@ -156,7 +183,11 @@ def preprocess_text(text):
     
     return text
 
-def retrain_with_feedback(model, vectorizer, feedback_data):
+def retrain_with_feedback(
+    model: Any, 
+    vectorizer: Any, 
+    feedback_data: List[Tuple[str, int]]
+) -> Any:
     """Retrain model with feedback data"""
     if not feedback_data:
         return model
@@ -165,8 +196,8 @@ def retrain_with_feedback(model, vectorizer, feedback_data):
     X_feedback = [item[0] for item in feedback_data]
     y_feedback = [item[1] for item in feedback_data]
     
-    # Process feedback text
-    X_processed = [preprocess_text(text) for text in X_feedback]
+    # Process feedback text with progress bar
+    X_processed = [preprocess_text(text) for text in tqdm(X_feedback, desc="Preprocessing feedback")]
     X_vectors = vectorizer.transform(X_processed)
     
     try:
@@ -206,190 +237,49 @@ def retrain_with_feedback(model, vectorizer, feedback_data):
     
     return model
 
-def create_fresh_model(vectorizer, X_train, y_train):
-    """Create a fresh model with correct sentiment understanding from scratch."""
-    print("Creating a new model with correct word sentiment understanding...")
-    
-    # Create the base model
-    clf = LogisticRegression(
-        C=1.0,              
-        solver='liblinear', 
-        random_state=42,
-        max_iter=1000,      
-        class_weight='balanced'  
-    )
-    
-    # Vectorize data if needed
-    if isinstance(X_train, pd.Series) or isinstance(X_train, list):
-        X_train_vec = vectorizer.fit_transform(X_train)
+def create_fresh_model(vectorizer, X_train, y_train, batch_training: bool = False):
+    if batch_training:
+        model = SGDClassifier(loss='log_loss', max_iter=5, random_state=42)
+        X_train_vec = vectorizer.transform(X_train)
+        model = train_in_batches(X_train_vec, y_train, model, batch_size=1000)
     else:
-        X_train_vec = X_train 
-    
-    # Train the model
-    clf.fit(X_train_vec, y_train)
-    
-    # Now apply lexicon fixes
-    clf = fix_model_lexicon(clf, vectorizer)
-    
-    # Save the model
-    dump(clf, 'corrected_model.joblib')
-    print("New model saved to 'corrected_model.joblib'")
-    
-    return clf
+        model = LogisticRegression(max_iter=300, n_jobs=-1)
+        X_train_vec = vectorizer.transform(X_train)
+        model.fit(X_train_vec, y_train)
+    return model
 
 def interactive_demo(vectorizer, model, collect_feedback=True):
     """
-    Allow user to interactively test the model with their own tweets with improved explanations.
+    Interactive CLI for tweet sentiment analysis with feedback collection.
     """
-    print("\n" + "="*70)
-    print("             TWEET SENTIMENT ANALYZER - INTERACTIVE DEMO")
-    print("="*70)
-    print("Type a message to analyze its sentiment (or 'quit' to exit):")
-    print("Type 'help' for example tweets or 'quit' to exit")
-    
     feedback_data = []
-    
+    print("\nEnter a tweet (or type 'exit' to quit):")
     while True:
-        user_input = input("\nEnter tweet text: ")
-        if user_input.lower() in ['quit', 'exit', 'q']:
-            print("Thank you for using the Tweet Analyzer!")
+        user_input = input("> ").strip()
+        if user_input.lower() == 'exit':
+            print("Exiting interactive demo.")
             break
-            
-        if user_input.lower() == 'help':
-            print("\nExample tweets to analyze:")
-            examples = [
-                "I absolutely love this new phone! It's amazing and works perfectly.",
-                "This is the worst service I've ever experienced. Never buying again.",
-                "The weather is nice today, going for a walk later.",
-                "I hate when people are rude for no reason.",
-                "Just got a promotion at work! So excited!"
-            ]
-            for i, example in enumerate(examples, 1):
-                print(f"{i}. {example}")
-            print("\nTry copying one of these or enter your own text.")
+        if not user_input:
+            print("Please enter non-empty text.")
             continue
-            
-        if not user_input.strip():
-            print("Please enter some text to analyze.")
-            continue
-            
         result = predict_sentiment(user_input, vectorizer, model)
-
-        color = '\033[92m' if result['prediction'] == 1 else '\033[91m' 
-        reset = '\033[0m'
-        
-        print(f"\nAnalysis Result:")
-        print(f"  Sentiment: {color}{result['label']}{reset}")
-        print(f"  Confidence: {color}{result['confidence']}{reset}")
-        
-        # Add sentiment score
-        sentiment_score = result['sentiment_score']
-        print(f"  Sentiment Score: {sentiment_score:.2f} [-1 = Very Negative, +1 = Very Positive]")
-
-        bar_length = 30
-        position = int((sentiment_score + 1) / 2 * bar_length)
-
-        neg_color = '\033[91m'  
-        pos_color = '\033[92m'  
-        neut_color = '\033[93m' 
-        reset = '\033[0m'
-        
-        # Create colored sections
-        if position <= bar_length // 3: 
-            bar = neg_color + '|' + '█' * position + '•' + ' ' * (bar_length - position - 1) + '|' + reset
-        elif position >= 2 * bar_length // 3:  
-            bar = pos_color + '|' + ' ' * position + '•' + ' ' * (bar_length - position - 1) + '|' + reset
-        else:  
-            bar = neut_color + '|' + ' ' * position + '•' + ' ' * (bar_length - position - 1) + '|' + reset
-        
-        # Add zone indicators
-        scale = f"|{neg_color}NEG{reset}" + ' ' * (bar_length - 8) + f"{pos_color}POS{reset}|"
-        neut_pos = bar_length // 2 - 2
-        neut_mark = '|' + ' ' * neut_pos + f"{neut_color}NEUT{reset}" + ' ' * neut_pos + '|'
-        
-        print(f"  {bar}")
-        print(f"  {neut_mark}")
-        print(f"  {scale}")
-        
-        # Add a simple explanation
-        print("\nWord contribution:")
-        
-        # Show which words contributed most to classification
-        processed_text = preprocess_text(user_input)
-        text_vector = vectorizer.transform([processed_text])
-        feature_names = vectorizer.get_feature_names_out()
-        
-        # Get the coefficients from the model
-        if hasattr(model, 'coef_'):
-            coef = model.coef_[0]
-            nonzero = text_vector.nonzero()[1]
-            word_importance = [(feature_names[i], coef[i]) for i in nonzero]
-            
-            # Sort by absolute value of coefficient (importance)
-            word_importance.sort(key=lambda x: abs(x[1]), reverse=True)
-            
-            # Show top contributing words (limited to 5)
-            for word, importance in word_importance[:5]:
-                lexicon_sentiment = ""
-                model_sentiment = "positive" if importance > 0 else "negative"
-                
-                if word in NEGATIVE_WORDS:
-                    lexicon_sentiment = "(lexicon: negative term)"
-                    # Alert when model and lexicon disagree
-                    if importance > 0:
-                        model_sentiment = f"positive ⚠️" 
-                elif word in POSITIVE_WORDS:
-                    lexicon_sentiment = "(lexicon: positive term)"
-                    # Alert when model and lexicon disagree
-                    if importance < 0:
-                        model_sentiment = f"negative ⚠️"
-                
-                print(f"  • '{word}': model sees as {model_sentiment} (weight: {importance:.4f}) {lexicon_sentiment}")
-        
-        # After getting result, check for warnings:
+        print(f"Sentiment: {result['label']} (Confidence: {result['confidence']})")
         if 'warning' in result:
-            print(f"\n⚠️ {result['warning']}")
-            print("The prediction may be less reliable.")
-        
+            print(result['warning'])
         if collect_feedback:
-            is_correct = input("\nWas this analysis correct? (y/n): ").lower().startswith('n')
-            if is_correct:
-                correct_label = input("What should the correct sentiment be? (p=positive, n=negative): ").lower()
-                if correct_label.startswith('p'):
-                    correct_sentiment = 1  # Positive
-                    feedback_data.append((user_input, correct_sentiment))
-
-                    for word, importance in word_importance:
-                        if word in POSITIVE_WORDS and importance < 0:
-
-                            feedback_data.append((f"I really {word} this.", correct_sentiment))
-                    print("Thank you for your feedback! This will help improve the model.")
-                elif correct_label.startswith('n'):
-                    correct_sentiment = 0  
-                    feedback_data.append((user_input, correct_sentiment))
-                    for word, importance in word_importance:
-                        if word in NEGATIVE_WORDS and importance > 0:
-                            feedback_data.append((f"I really {word} this.", correct_sentiment))
-                    print("Thank you for your feedback! This will help improve the model.")
-        
-        print("\n" + "-"*50)
-    
-    if feedback_data and len(feedback_data) >= 3:
-        model = retrain_with_feedback(model, vectorizer, feedback_data)
-    
-    return feedback_data
-
-def create_vectorizer():
-    """Create and return a configured TF-IDF vectorizer"""
-    return TfidfVectorizer(
-        max_features=15_000, 
-        ngram_range=(1, 3),   
-        stop_words='english',
-        min_df=5,            
-        max_df=0.9,         
-        use_idf=True,
-        sublinear_tf=True  
-    )
+            feedback = input("Is this correct? (y/n): ").strip().lower()
+            if feedback == 'n':
+                correct_label = input("What is the correct label? (0 = Negative/Malicious, 1 = Positive/Benign): ").strip()
+                if correct_label in ['0', '1']:
+                    feedback_data.append((user_input, int(correct_label)))
+                    print("Feedback recorded.")
+                else:
+                    print("Invalid label. Feedback not recorded.")
+    # After session, retrain if feedback was collected
+    if collect_feedback and feedback_data:
+        print("\nRetraining model with feedback...")
+        retrain_with_feedback(model, vectorizer, feedback_data)
+        print("Model updated with feedback.")
 
 def tune_hyperparameters(model, param_grid, X_train, y_train):
     """Perform hyperparameter tuning using GridSearchCV"""
@@ -413,9 +303,11 @@ def tune_hyperparameters(model, param_grid, X_train, y_train):
 
 def train_new_model(vectorizer, X_train, X_test, y_train, model_path):
     """Train a new model with hyperparameter tuning and save it"""
-    # Vectorize the data
-    X_train_vec = vectorizer.fit_transform(X_train)
-    X_test_vec = vectorizer.transform(X_test)
+    # Vectorize the data with progress bar
+    print("Vectorizing training data...")
+    X_train_vec = vectorizer.fit_transform(list(tqdm(X_train, desc="Vectorizing train")))
+    print("Vectorizing test data...")
+    X_test_vec = vectorizer.transform(list(tqdm(X_test, desc="Vectorizing test")))
     print(f"Vectorization complete. Vocabulary size: {len(vectorizer.get_feature_names_out())}")
     
     # Set up hyperparameter tuning
@@ -465,8 +357,15 @@ def perform_cross_validation(model, X, y, cv=5):
     cv_scores = cross_val_score(model, X, y, cv=cv, scoring='accuracy', n_jobs=-1)
     return cv_scores
 
-def fix_model_lexicon(model, vectorizer):
-    """Fix the model's understanding of positive and negative words"""
+def fix_model_lexicon(model: Any, vectorizer: Any) -> Any:
+    """
+    Adjust model coefficients for known positive/negative words.
+    Args:
+        model: Trained model with coef_ attribute.
+        vectorizer: Fitted vectorizer.
+    Returns:
+        Model with adjusted coefficients.
+    """
     if not hasattr(model, 'coef_'):
         return model
         
@@ -580,16 +479,13 @@ def main(sample_size=None):
     print(f"Training set size: {len(X_train)}, Testing set size: {len(X_test)}")
 
     # 4. & 5. Vectorization and model training
-    model_path = 'logistic_regression_model.joblib'
-    vectorizer_path = 'tfidf_vectorizer.joblib'
-
-    if os.path.exists(model_path) and os.path.exists(vectorizer_path):
+    if os.path.exists(MODEL_PATH) and os.path.exists(VECTORIZER_PATH):
         print("Loading existing model and vectorizer...")
         try:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
-                clf = load(model_path)
-                vectorizer = load(vectorizer_path)
+                clf = load(MODEL_PATH)
+                vectorizer = load(VECTORIZER_PATH)
             
             print("Model and vectorizer loaded successfully.")
             X_train_vec = vectorizer.transform(X_train)
@@ -606,11 +502,11 @@ def main(sample_size=None):
             print(f"Error loading model or vectorizer: {e}")
             print("Training new model with fresh vectorizer instead...")
             vectorizer = create_vectorizer()
-            X_train_vec, X_test_vec, clf = train_new_model(vectorizer, X_train, X_test, y_train, model_path)
+            X_train_vec, X_test_vec, clf = train_new_model(vectorizer, X_train, X_test, y_train, MODEL_PATH)
     else:
         print("Training new model with fresh vectorizer...")
         vectorizer = create_vectorizer()
-        X_train_vec, X_test_vec, clf = train_new_model(vectorizer, X_train, X_test, y_train, model_path)
+        X_train_vec, X_test_vec, clf = train_new_model(vectorizer, X_train, X_test, y_train, MODEL_PATH)
     # cross-validation
     print("Performing cross-validation...")
     cv_scores = perform_cross_validation(clf, X_train_vec, y_train)
@@ -633,15 +529,15 @@ def main(sample_size=None):
     plt.pause(1)
 
     # Save vectorizer
-    dump(vectorizer, vectorizer_path)
-    print(f"Vectorizer saved to '{vectorizer_path}'")
+    dump(vectorizer, VECTORIZER_PATH)
+    print(f"Vectorizer saved to '{VECTORIZER_PATH}'")
     
     # Before returning, fix the model lexicon
     print("\nChecking and fixing model sentiment lexicon...")
     clf = fix_model_lexicon(clf, vectorizer)
     
     # Save the model again with fixed lexicon
-    dump(clf, 'logistic_regression_model.joblib')
+    dump(clf, MODEL_PATH)
     print("Model saved with updated sentiment lexicon.")
     
     return clf, vectorizer

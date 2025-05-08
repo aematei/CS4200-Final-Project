@@ -54,7 +54,7 @@ https://www.kaggle.com/datasets/kazanova/sentiment140?resource=download
 
 2. Run the classifier:
    ```bash
-   python tweet_moderation.py
+   python -m src.tweet_moderation
    ```
 
 ## Output

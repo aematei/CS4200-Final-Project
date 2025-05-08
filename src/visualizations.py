@@ -1,3 +1,6 @@
+from src.models.model_utils import train_in_batches
+from src.config import DATA_PATH, MODEL_PATH, VECTORIZER_PATH
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np

@@ -2,6 +2,7 @@ from typing import Any, Tuple, Dict
 import numpy as np
 from sklearn.model_selection import KFold, cross_val_score, GridSearchCV
 from tqdm import tqdm
+from src.config import DATA_PATH, MODEL_PATH, VECTORIZER_PATH
 
 def train_in_batches(
     X: Any, 

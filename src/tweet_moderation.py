@@ -12,10 +12,11 @@ from tqdm import tqdm
 from tqdm.auto import tqdm
 import seaborn as sns
 from typing import Any, Dict, List, Tuple, Optional
-from model_utils import train_in_batches
+from src.models.model_utils import train_in_batches
 from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
-from visualizations import plot_all_metrics
+from src.visualizations import plot_all_metrics
+from src.config import DATA_PATH, MODEL_PATH, VECTORIZER_PATH
 tqdm.pandas()
 
 import warnings
@@ -28,9 +29,6 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 warnings.filterwarnings("ignore", message=".*multi_class.*")
 
 import matplotlib.pyplot as plt
-
-MODEL_PATH = "logistic_regression_model.joblib"
-VECTORIZER_PATH = "vectorizer.joblib"
 
 NEGATIVE_WORDS = {
     'hate', 'stupid', 'sad', 'slut', 'poop', 'slander', 'terrible', 'awful', 
@@ -230,7 +228,7 @@ def retrain_with_feedback(
         
         print("Model successfully updated with feedback!")
         # Save the updated model
-        dump(model, 'logistic_regression_model.joblib')
+        dump(model, MODEL_PATH)
         
     except Exception as e:
         print(f"Error updating model: {e}")
@@ -328,7 +326,7 @@ def train_new_model(vectorizer, X_train, X_test, y_train, model_path):
     print(f"Model saved to '{model_path}'")
     
     # Save the vectorizer 
-    vectorizer_path = 'tfidf_vectorizer.joblib'
+    vectorizer_path = VECTORIZER_PATH
     dump(vectorizer, vectorizer_path)
     print(f"Vectorizer saved to '{vectorizer_path}'")
     
@@ -395,7 +393,7 @@ def main(sample_size=None):
     # 1. Load data
     print("Loading dataset...")
     df = pd.read_csv(
-        'training.1600000.processed.noemoticon.csv',
+        DATA_PATH,
         encoding='latin-1',
         header=None,
         names=['target', 'id', 'date', 'flag', 'user', 'text']

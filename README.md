@@ -75,3 +75,12 @@ The classifier provides multiple evaluation metrics:
 - Classification report (precision, recall, F1-score)
 - Cross-validation scores
 - Visual performance analysis through plots
+
+## Example Output
+
+![Confusion Matrix Example](docs/confusion_matrix_example.png)
+![ROC Curve Example](docs/roc_curve_example.png)
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.

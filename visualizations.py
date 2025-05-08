@@ -1,11 +1,24 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from typing import Optional, Any
 from sklearn.model_selection import learning_curve
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score
 
-def plot_learning_curve(estimator, X, y, title='Learning Curve'):
-    """Generate a learning curve with improved clarity and explanations."""
+def plot_learning_curve(
+    estimator: Any, 
+    X: Any, 
+    y: Any, 
+    title: str = 'Learning Curve'
+) -> None:
+    """
+    Generate a learning curve with explanations.
+    Args:
+        estimator: The model/estimator to evaluate.
+        X: Feature matrix.
+        y: Target labels.
+        title: Plot title.
+    """
     plt.style.use('seaborn-v0_8-whitegrid')
     
     train_sizes, train_scores, test_scores = learning_curve(
@@ -69,8 +82,18 @@ def plot_learning_curve(estimator, X, y, title='Learning Curve'):
     plt.tight_layout(rect=[0, 0.07, 1, 0.95])  
     plt.show()
 
-def plot_confusion_matrix(y_true, y_pred, class_names=['Negative', 'Positive']):
-    """Plot a confusion matrix to show model classification performance with clearer labels."""
+def plot_confusion_matrix(
+    y_true: np.ndarray, 
+    y_pred: np.ndarray, 
+    class_names: list = ['Negative', 'Positive']
+) -> None:
+    """
+    Plot a confusion matrix with annotations.
+    Args:
+        y_true: True labels.
+        y_pred: Predicted labels.
+        class_names: List of class names.
+    """
     plt.style.use('seaborn-v0_8-whitegrid')
     
     cm = confusion_matrix(y_true, y_pred)
@@ -113,8 +136,16 @@ def plot_confusion_matrix(y_true, y_pred, class_names=['Negative', 'Positive']):
     plt.tight_layout(rect=[0, 0.07, 1, 0.93])
     plt.show()
 
-def plot_roc_curve(y_test, y_pred_proba):
-    """Plot ROC curve with improved explanations and layout."""
+def plot_roc_curve(
+    y_test: np.ndarray, 
+    y_pred_proba: np.ndarray
+) -> None:
+    """
+    Plot ROC curve with explanations.
+    Args:
+        y_test: True labels.
+        y_pred_proba: Predicted probabilities for positive class.
+    """
     plt.style.use('seaborn-v0_8-whitegrid')
     
     fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
@@ -169,8 +200,16 @@ def plot_roc_curve(y_test, y_pred_proba):
     plt.tight_layout(rect=[0, 0.07, 1, 0.95]) 
     plt.show()
 
-def plot_precision_recall_curve(y_test, y_pred_proba):
-    """Plot precision-recall curve with improved layout and explanations."""
+def plot_precision_recall_curve(
+    y_test: np.ndarray, 
+    y_pred_proba: np.ndarray
+) -> None:
+    """
+    Plot precision-recall curve with explanations.
+    Args:
+        y_test: True labels.
+        y_pred_proba: Predicted probabilities for positive class.
+    """
     precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba)
     average_precision = average_precision_score(y_test, y_pred_proba)
     
@@ -222,61 +261,101 @@ def plot_precision_recall_curve(y_test, y_pred_proba):
     plt.tight_layout(rect=[0, 0.07, 1, 0.95]) 
     plt.show()
 
-def plot_all_metrics(clf, X_train, X_test, y_train, y_test):
-    """Generate all performance visualizations on a clean grid."""
+def plot_feature_importance(
+    model: Any, 
+    vectorizer: Any, 
+    ax: Optional[Any] = None, 
+    top_n: int = 20
+) -> None:
+    """
+    Plot top positive and negative feature importances.
+    Args:
+        model: Trained model with coef_ attribute.
+        vectorizer: Fitted vectorizer.
+        ax: Matplotlib axis to plot on.
+        top_n: Number of top features to show for each class.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    if not hasattr(model, "coef_"):
+        print("Model does not support feature importance.")
+        return
+
+    feature_names = np.array(vectorizer.get_feature_names_out())
+    coefs = model.coef_[0]
+    top_positive = np.argsort(coefs)[-top_n:]
+    top_negative = np.argsort(coefs)[:top_n]
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+    ax.barh(feature_names[top_negative], coefs[top_negative], color='red')
+    ax.barh(feature_names[top_positive], coefs[top_positive], color='green')
+    ax.set_title("Top Feature Importance")
+    ax.set_xlabel("Coefficient Value")
+    ax.grid(True)
+
+def plot_all_metrics(
+    clf: Any, 
+    X_train: Any, 
+    X_test: Any, 
+    y_train: Any, 
+    y_test: Any, 
+    vectorizer: Optional[Any] = None
+) -> None:
+    """
+    Generate all performance visualizations on a clean grid.
+    Args:
+        clf: Trained classifier.
+        X_train: Training features.
+        X_test: Test features.
+        y_train: Training labels.
+        y_test: Test labels.
+        vectorizer: Fitted vectorizer.
+    """
     plt.style.use('seaborn-v0_8-whitegrid')
+    fig = plt.figure(figsize=(24, 16))
 
-    fig = plt.figure(figsize=(20, 16))
-
-    grid_positions = [
-        (0, 0, 1, 1),  # row, col, row_span, col_span for Learning Curve
-        (0, 1, 1, 1),  # Confusion Matrix
-        (1, 0, 1, 1),  # ROC curve
-        (1, 1, 1, 1)   # PR curve
-    ]
-    
-    # 1. Learning Curve - top left
-    print("\n1. Learning Curve - Shows how model performance improves with more data")
-    ax1 = plt.subplot2grid((2, 2), (0, 0))
+    ax1 = plt.subplot2grid((2, 3), (0, 0))
     _plot_learning_curve_on_ax(clf, X_train, y_train, ax=ax1)
-    
-    # 2. Confusion Matrix - top right
-    print("\n2. Confusion Matrix - Shows prediction accuracy breakdown")
-    ax2 = plt.subplot2grid((2, 2), (0, 1))
-    
-    # Get predictions
+
+    ax2 = plt.subplot2grid((2, 3), (0, 1))
     y_pred = clf.predict(X_test)
-    
-    # Plot confusion matrix
     _plot_confusion_matrix_on_ax(y_test, y_pred, ax=ax2)
-    
-    # 3. ROC curve - bottom left
-    print("\n3. ROC Curve - Shows true positive vs false positive tradeoff")
-    ax3 = plt.subplot2grid((2, 2), (1, 0))
-    
-    # Get probability scores for positive class
+
+    ax3 = plt.subplot2grid((2, 3), (0, 2))
     y_pred_proba = clf.predict_proba(X_test)[:, 1]
-    
-    # Plot ROC curve
     _plot_roc_curve_on_ax(y_test, y_pred_proba, ax=ax3)
-    
-    # 4. Precision-Recall curve - bottom right
-    print("\n4. Precision-Recall Curve - Shows precision vs recall tradeoff")
-    ax4 = plt.subplot2grid((2, 2), (1, 1))
+
+    ax4 = plt.subplot2grid((2, 3), (1, 0))
     _plot_pr_curve_on_ax(y_test, y_pred_proba, ax=ax4)
 
+    if vectorizer is not None:
+        ax5 = plt.subplot2grid((2, 3), (1, 1), colspan=2)
+        plot_feature_importance(clf, vectorizer, ax=ax5)
+
+    fig.suptitle('Tweet Classification Model Performance Metrics', fontsize=22, fontweight='bold', y=0.98)
     plt.tight_layout(pad=5.0, h_pad=6.0, w_pad=6.0)
-
-    fig.suptitle('Tweet Classification Model Performance Metrics', 
-                 fontsize=20, fontweight='bold', y=0.98)
-
     plt.subplots_adjust(top=0.92)
-    
     plt.show()
-    print("\nAll visualizations generated successfully!")
 
-def _plot_learning_curve_on_ax(estimator, X, y, ax=None):
-    """Plot learning curve on a specific axis."""
+def _plot_learning_curve_on_ax(
+    estimator: Any, 
+    X: Any, 
+    y: Any, 
+    ax: Optional[Any] = None
+) -> Any:
+    """
+    Plot learning curve on a specific axis.
+    Args:
+        estimator: Model/estimator.
+        X: Feature matrix.
+        y: Target labels.
+        ax: Matplotlib axis.
+    Returns:
+        ax: The axis with the plot.
+    """
     from sklearn.model_selection import learning_curve
     
     if ax is None:
@@ -325,8 +404,22 @@ def _plot_learning_curve_on_ax(estimator, X, y, ax=None):
     ax.grid(True)
     return ax
 
-def _plot_confusion_matrix_on_ax(y_true, y_pred, ax=None, class_names=['Negative', 'Positive']):
-    """Plot confusion matrix on a specific axis."""
+def _plot_confusion_matrix_on_ax(
+    y_true: np.ndarray, 
+    y_pred: np.ndarray, 
+    ax: Optional[Any] = None, 
+    class_names: list = ['Negative', 'Positive']
+) -> Any:
+    """
+    Plot confusion matrix on a specific axis.
+    Args:
+        y_true: True labels.
+        y_pred: Predicted labels.
+        ax: Matplotlib axis.
+        class_names: List of class names.
+    Returns:
+        ax: The axis with the plot.
+    """
     from sklearn.metrics import confusion_matrix
     import seaborn as sns
     
@@ -345,8 +438,20 @@ def _plot_confusion_matrix_on_ax(y_true, y_pred, ax=None, class_names=['Negative
     
     return ax
 
-def _plot_roc_curve_on_ax(y_test, y_pred_proba, ax=None):
-    """Plot ROC curve on a specific axis."""
+def _plot_roc_curve_on_ax(
+    y_test: np.ndarray, 
+    y_pred_proba: np.ndarray, 
+    ax: Optional[Any] = None
+) -> Any:
+    """
+    Plot ROC curve on a specific axis.
+    Args:
+        y_test: True labels.
+        y_pred_proba: Predicted probabilities.
+        ax: Matplotlib axis.
+    Returns:
+        ax: The axis with the plot.
+    """
     from sklearn.metrics import roc_curve, auc
     
     if ax is None:
@@ -375,8 +480,20 @@ def _plot_roc_curve_on_ax(y_test, y_pred_proba, ax=None):
     ax.grid(True)
     return ax
 
-def _plot_pr_curve_on_ax(y_test, y_pred_proba, ax=None):
-    """Plot Precision-Recall curve on a specific axis."""
+def _plot_pr_curve_on_ax(
+    y_test: np.ndarray, 
+    y_pred_proba: np.ndarray, 
+    ax: Optional[Any] = None
+) -> Any:
+    """
+    Plot Precision-Recall curve on a specific axis.
+    Args:
+        y_test: True labels.
+        y_pred_proba: Predicted probabilities.
+        ax: Matplotlib axis.
+    Returns:
+        ax: The axis with the plot.
+    """
     from sklearn.metrics import precision_recall_curve, average_precision_score
     
     if ax is None:

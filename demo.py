@@ -3,6 +3,9 @@ from tweet_moderation import main, predict_sentiment, interactive_demo
 from joblib import load
 import os
 
+MODEL_PATH = 'logistic_regression_model.joblib'
+VECTORIZER_PATH = 'vectorizer.joblib'
+
 def run_demo():
     print("="*70)
     print("             TWEET SENTIMENT ANALYSIS DEMO")
@@ -10,13 +13,18 @@ def run_demo():
 
     # Step 1: Train/load the model
     print("\n1. Initializing the model...")
-    if os.path.exists('logistic_regression_model.joblib') and os.path.exists('vectorizer.joblib'):
-        print("Loading existing model and vectorizer...")
-        model = load('logistic_regression_model.joblib')
-        vectorizer = load('vectorizer.joblib')
-    else:
-        print("Training new model...")
-        model, vectorizer = main(sample_size=10000)  # Use smaller sample for demo
+    try:
+        if os.path.exists(MODEL_PATH) and os.path.exists(VECTORIZER_PATH):
+            print("Loading existing model and vectorizer...")
+            model = load(MODEL_PATH)
+            vectorizer = load(VECTORIZER_PATH)
+        else:
+            print("Training new model...")
+            model, vectorizer = main(sample_size=10000)  # Use smaller sample for demo
+    except Exception as e:
+        print(f"Error loading or training model: {e}")
+        print("Exiting demo.")
+        return
 
     # Step 2: Example predictions
     print("\n2. Testing with example tweets...")
